@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from "react";
-import { Send, Mic, X } from "lucide-react";
+import { Send, Mic, X, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -30,6 +30,10 @@ const AIAssistant: React.FC = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [isLoading, setIsLoading] = useState(false);
   const { isRecording, audioUrl, transcript, startRecording, stopRecording } = useVoiceRecording();
+  const [isRealTimeChat, setIsRealTimeChat] = useState(false);
+  const [bubbleText, setBubbleText] = useState("");
+  const [showBubbles, setShowBubbles] = useState(false);
+  const bubbleInterval = useRef<NodeJS.Timeout | null>(null);
   
   const suggestedQuestions = [
     "How much did I spend on dining last month?",
@@ -47,6 +51,14 @@ const AIAssistant: React.FC = () => {
       handleSendMessage(transcript);
     }
   }, [transcript]);
+
+  useEffect(() => {
+    return () => {
+      if (bubbleInterval.current) {
+        clearInterval(bubbleInterval.current);
+      }
+    };
+  }, []);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -66,20 +78,64 @@ const AIAssistant: React.FC = () => {
     setInputText("");
     setIsLoading(true);
 
-    // Simulate AI processing
-    setTimeout(async () => {
-      const response = await simulateAIResponse(text);
+    if (isRealTimeChat) {
+      // Start the bubble animation
+      setShowBubbles(true);
+      setBubbleText("");
       
-      const aiMessage: Message = {
-        id: `ai-${Date.now()}`,
-        text: response.text,
-        sender: "ai",
-        timestamp: new Date(),
-        hasChart: response.hasChart
-      };
-      setMessages(prev => [...prev, aiMessage]);
-      setIsLoading(false);
-    }, 1000);
+      // Simulate real-time response
+      const response = await simulateAIResponse(text);
+      const fullText = response.text;
+      let currentText = "";
+      
+      // Clear any existing interval
+      if (bubbleInterval.current) {
+        clearInterval(bubbleInterval.current);
+      }
+      
+      // Gradually reveal text character by character
+      bubbleInterval.current = setInterval(() => {
+        if (currentText.length < fullText.length) {
+          const nextChar = fullText[currentText.length];
+          currentText += nextChar;
+          setBubbleText(currentText);
+        } else {
+          if (bubbleInterval.current) {
+            clearInterval(bubbleInterval.current);
+            bubbleInterval.current = null;
+          }
+          
+          // After the animation completes, add the message to chat history
+          setTimeout(() => {
+            setShowBubbles(false);
+            const aiMessage: Message = {
+              id: `ai-${Date.now()}`,
+              text: fullText,
+              sender: "ai",
+              timestamp: new Date(),
+              hasChart: response.hasChart
+            };
+            setMessages(prev => [...prev, aiMessage]);
+            setIsLoading(false);
+          }, 500);
+        }
+      }, 30); // Speed of typing animation
+    } else {
+      // Original behavior
+      setTimeout(async () => {
+        const response = await simulateAIResponse(text);
+        
+        const aiMessage: Message = {
+          id: `ai-${Date.now()}`,
+          text: response.text,
+          sender: "ai",
+          timestamp: new Date(),
+          hasChart: response.hasChart
+        };
+        setMessages(prev => [...prev, aiMessage]);
+        setIsLoading(false);
+      }, 1000);
+    }
   };
 
   const handleVoiceInput = () => {
@@ -87,6 +143,17 @@ const AIAssistant: React.FC = () => {
       stopRecording();
     } else {
       startRecording();
+    }
+  };
+
+  const toggleRealTimeChat = () => {
+    setIsRealTimeChat(!isRealTimeChat);
+    if (showBubbles) {
+      setShowBubbles(false);
+      if (bubbleInterval.current) {
+        clearInterval(bubbleInterval.current);
+        bubbleInterval.current = null;
+      }
     }
   };
 
@@ -166,7 +233,7 @@ const AIAssistant: React.FC = () => {
           </div>
         ))}
         
-        {isLoading && (
+        {isLoading && !showBubbles && (
           <div className="flex justify-start">
             <div className="chat-bubble-ai">
               <div className="flex space-x-1">
@@ -178,7 +245,39 @@ const AIAssistant: React.FC = () => {
           </div>
         )}
         
+        {showBubbles && (
+          <div className="fixed bottom-28 right-4 max-w-[80%] z-20">
+            <div className="chat-bubble-ai animate-scale-in flex flex-col">
+              <div className="absolute -top-1 -left-1 w-4 h-4">
+                <div className="absolute animate-ping w-4 h-4 rounded-full bg-primary opacity-75"></div>
+                <div className="relative w-3 h-3 rounded-full bg-primary"></div>
+              </div>
+              <p>{bubbleText || "Thinking..."}</p>
+              {bubbleText ? null : (
+                <div className="flex space-x-1 mt-1">
+                  <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: "0ms" }}></div>
+                  <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: "150ms" }}></div>
+                  <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: "300ms" }}></div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+        
         <div ref={messagesEndRef} />
+      </div>
+      
+      {/* Toggle for Real-time Chat */}
+      <div className="mb-3 flex justify-end">
+        <Button
+          variant={isRealTimeChat ? "default" : "outline"}
+          size="sm"
+          onClick={toggleRealTimeChat}
+          className="flex items-center gap-2"
+        >
+          <MessageSquare className="h-4 w-4" />
+          {isRealTimeChat ? "Real-time Mode" : "Standard Mode"}
+        </Button>
       </div>
       
       {/* Suggested Questions */}
