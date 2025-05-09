@@ -46,7 +46,11 @@ const GoalProgress: React.FC<GoalProgressProps> = ({ goal }) => {
           <span>{Math.round(percentComplete)}% Complete</span>
           <span>{formatCurrency(targetAmount - currentAmount)} to go</span>
         </div>
-        <Progress value={percentComplete} className="h-2" indicatorClassName="bg-teal-DEFAULT" />
+        <Progress 
+          value={percentComplete} 
+          className="h-2" 
+          indicatorClassName={color ? `bg-[${color}]` : "bg-teal-DEFAULT"}
+        />
       </div>
     </div>
   );
