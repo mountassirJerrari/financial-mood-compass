@@ -9,7 +9,7 @@ import { parseMockReceiptData } from "../../utils/parsers";
 
 const CameraEntryForm: React.FC = () => {
   const navigate = useNavigate();
-  const { videoRef, image, isCameraActive, startCamera, stopCamera, captureImage } = useCamera();
+  const { videoRef, image, setImage, isCameraActive, startCamera, stopCamera, captureImage } = useCamera();
   const { addTransaction } = useFinanceData();
   const [isProcessing, setIsProcessing] = useState(false);
   const [receiptData, setReceiptData] = useState<Partial<Transaction> | null>(null);
