@@ -13,11 +13,17 @@ const CameraEntryForm: React.FC = () => {
   const { addTransaction } = useFinanceData();
   const [isProcessing, setIsProcessing] = useState(false);
   const [receiptData, setReceiptData] = useState<Partial<Transaction> | null>(null);
+  const [cameraError, setCameraError] = useState<string | null>(null);
 
   // Initialize camera when component mounts
   useEffect(() => {
     const initCamera = async () => {
-      await startCamera();
+      const success = await startCamera();
+      if (!success) {
+        setCameraError("Camera initialization failed. Please check permissions.");
+      } else {
+        setCameraError(null);
+      }
     };
     
     initCamera();
@@ -44,7 +50,11 @@ const CameraEntryForm: React.FC = () => {
   const handleReset = async () => {
     setImage(null);
     setReceiptData(null);
-    await startCamera();
+    setCameraError(null);
+    const success = await startCamera();
+    if (!success) {
+      setCameraError("Failed to restart camera. Please try again.");
+    }
   };
 
   const handleConfirm = () => {
@@ -76,6 +86,7 @@ const CameraEntryForm: React.FC = () => {
               playsInline 
               muted
               className="w-full h-full object-cover"
+              style={{ display: "block" }}  {/* Force display block */}
             />
           ) : image ? (
             <img 
@@ -85,7 +96,16 @@ const CameraEntryForm: React.FC = () => {
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center bg-muted">
-              <Camera className="h-12 w-12 text-muted-foreground" />
+              {cameraError ? (
+                <div className="text-center p-4">
+                  <p className="text-red-500 mb-2">{cameraError}</p>
+                  <Button variant="outline" onClick={handleReset}>
+                    Retry Camera Access
+                  </Button>
+                </div>
+              ) : (
+                <Camera className="h-12 w-12 text-muted-foreground" />
+              )}
             </div>
           )}
           
@@ -141,6 +161,7 @@ const CameraEntryForm: React.FC = () => {
           <Button 
             onClick={handleCapture} 
             className="w-16 h-16 rounded-full mx-auto mt-2 bg-primary"
+            disabled={!isCameraActive || !!cameraError}
           >
             <Camera className="h-6 w-6" />
           </Button>

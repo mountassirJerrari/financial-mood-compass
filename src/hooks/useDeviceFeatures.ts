@@ -13,9 +13,14 @@ export const useCamera = () => {
     try {
       // First make sure to stop any existing streams
       if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current.getTracks().forEach(track => {
+          track.stop();
+          console.log("Stopped existing track:", track.kind);
+        });
+        streamRef.current = null;
       }
       
+      console.log("Requesting camera access...");
       const stream = await navigator.mediaDevices.getUserMedia({ 
         video: { 
           facingMode: 'environment',
@@ -24,13 +29,24 @@ export const useCamera = () => {
         } 
       });
       
+      console.log("Camera access granted, tracks:", stream.getTracks().length);
+      
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         streamRef.current = stream;
         setIsCameraActive(true);
+        
+        // Double check that video is playing properly
+        videoRef.current.onloadedmetadata = () => {
+          console.log("Video metadata loaded");
+          videoRef.current?.play().catch(e => console.error("Error playing video:", e));
+        };
+        
         return true;
+      } else {
+        console.error("Video ref is not available");
+        return false;
       }
-      return false;
     } catch (err) {
       toast.error("Failed to access camera");
       console.error("Error accessing camera:", err);
@@ -39,18 +55,20 @@ export const useCamera = () => {
   };
 
   const stopCamera = () => {
+    console.log("Stopping camera");
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => {
+        console.log("Stopping track:", track.kind, track.readyState);
         track.stop();
       });
       streamRef.current = null;
-      
-      if (videoRef.current) {
-        videoRef.current.srcObject = null;
-      }
-      
-      setIsCameraActive(false);
     }
+    
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+    
+    setIsCameraActive(false);
   };
 
   const captureImage = () => {
@@ -58,6 +76,8 @@ export const useCamera = () => {
       const canvas = document.createElement("canvas");
       canvas.width = videoRef.current.videoWidth;
       canvas.height = videoRef.current.videoHeight;
+      
+      console.log("Capturing image:", canvas.width, "x", canvas.height);
       
       const ctx = canvas.getContext("2d");
       if (ctx) {
@@ -100,11 +120,17 @@ export const useVoiceRecording = () => {
     try {
       // Ensure any existing streams are stopped
       if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current.getTracks().forEach(track => {
+          track.stop();
+          console.log("Stopped existing audio track:", track.kind);
+        });
         streamRef.current = null;
       }
       
+      console.log("Requesting audio access...");
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      console.log("Audio access granted, tracks:", stream.getTracks().length);
+      
       streamRef.current = stream;
       
       const mediaRecorder = new MediaRecorder(stream);
@@ -138,13 +164,17 @@ export const useVoiceRecording = () => {
   };
 
   const stopRecording = () => {
+    console.log("Stopping recording");
     if (mediaRecorderRef.current && isRecording) {
       mediaRecorderRef.current.stop();
       setIsRecording(false);
       
       // Stop all audio tracks
       if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current.getTracks().forEach(track => {
+          console.log("Stopping audio track:", track.kind, track.readyState);
+          track.stop();
+        });
         streamRef.current = null;
       }
     }
@@ -172,12 +202,16 @@ export const useVoiceRecording = () => {
     return () => {
       // Cleanup function to ensure audio resources are released when component unmounts
       if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current.getTracks().forEach(track => {
+          track.stop();
+          console.log("Cleaning up audio track:", track.kind);
+        });
         streamRef.current = null;
       }
       
       if (audioUrl) {
         URL.revokeObjectURL(audioUrl);
+        console.log("Revoked audio URL");
       }
     };
   }, [audioUrl]);
