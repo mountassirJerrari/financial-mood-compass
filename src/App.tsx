@@ -11,6 +11,7 @@ import AddExpense from "./pages/AddExpense";
 import Goals from "./pages/Goals";
 import Profile from "./pages/Profile";
 import AIAssistant from "./pages/AIAssistant";
+import Statistics from "./pages/Statistics";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -28,6 +29,7 @@ const App = () => (
             <Route path="/add-expense" element={<AddExpense />} />
             <Route path="/add-expense/:method" element={<AddExpense />} />
             <Route path="/goals" element={<Goals />} />
+            <Route path="/statistics" element={<Statistics />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/ai-assistant" element={<AIAssistant />} />
           </Route>

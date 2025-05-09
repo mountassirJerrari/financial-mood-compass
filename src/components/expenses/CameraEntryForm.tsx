@@ -14,9 +14,15 @@ const CameraEntryForm: React.FC = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [receiptData, setReceiptData] = useState<Partial<Transaction> | null>(null);
 
+  // Initialize camera when component mounts
   useEffect(() => {
-    startCamera();
+    const initCamera = async () => {
+      await startCamera();
+    };
     
+    initCamera();
+    
+    // Cleanup function to ensure camera is stopped when component unmounts
     return () => {
       stopCamera();
     };
@@ -35,10 +41,10 @@ const CameraEntryForm: React.FC = () => {
     }, 1500);
   };
 
-  const handleReset = () => {
+  const handleReset = async () => {
     setImage(null);
     setReceiptData(null);
-    startCamera();
+    await startCamera();
   };
 
   const handleConfirm = () => {
@@ -52,6 +58,9 @@ const CameraEntryForm: React.FC = () => {
         type: "expense",
         location: receiptData.location
       });
+      
+      // Make sure we stop the camera and clean up when navigating away
+      stopCamera();
       navigate("/");
     }
   };
@@ -65,6 +74,7 @@ const CameraEntryForm: React.FC = () => {
               ref={videoRef} 
               autoPlay 
               playsInline 
+              muted
               className="w-full h-full object-cover"
             />
           ) : image ? (

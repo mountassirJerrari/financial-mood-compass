@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from "react";
 import { toast } from "sonner";
 import { useLocalStorage } from "./useLocalStorage";
@@ -10,28 +11,50 @@ export const useCamera = () => {
 
   const startCamera = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      // First make sure to stop any existing streams
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+      
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { 
+          facingMode: 'environment',
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        } 
+      });
+      
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         streamRef.current = stream;
         setIsCameraActive(true);
+        return true;
       }
+      return false;
     } catch (err) {
       toast.error("Failed to access camera");
       console.error("Error accessing camera:", err);
+      return false;
     }
   };
 
   const stopCamera = () => {
     if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current.getTracks().forEach(track => {
+        track.stop();
+      });
       streamRef.current = null;
+      
+      if (videoRef.current) {
+        videoRef.current.srcObject = null;
+      }
+      
       setIsCameraActive(false);
     }
   };
 
   const captureImage = () => {
-    if (videoRef.current) {
+    if (videoRef.current && streamRef.current) {
       const canvas = document.createElement("canvas");
       canvas.width = videoRef.current.videoWidth;
       canvas.height = videoRef.current.videoHeight;
@@ -71,10 +94,19 @@ export const useVoiceRecording = () => {
   const [transcript, setTranscript] = useState("");
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const streamRef = useRef<MediaStream | null>(null);
 
   const startRecording = async () => {
     try {
+      // Ensure any existing streams are stopped
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
+      }
+      
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+      
       const mediaRecorder = new MediaRecorder(stream);
       
       mediaRecorderRef.current = mediaRecorder;
@@ -97,9 +129,11 @@ export const useVoiceRecording = () => {
 
       mediaRecorder.start();
       setIsRecording(true);
+      return true;
     } catch (error) {
       toast.error("Failed to access microphone");
       console.error("Error starting recording:", error);
+      return false;
     }
   };
 
@@ -109,8 +143,9 @@ export const useVoiceRecording = () => {
       setIsRecording(false);
       
       // Stop all audio tracks
-      if (mediaRecorderRef.current.stream) {
-        mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
       }
     }
   };
@@ -132,6 +167,20 @@ export const useVoiceRecording = () => {
       toast.success("Voice processed successfully");
     }, 1000);
   };
+
+  useEffect(() => {
+    return () => {
+      // Cleanup function to ensure audio resources are released when component unmounts
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
+      }
+      
+      if (audioUrl) {
+        URL.revokeObjectURL(audioUrl);
+      }
+    };
+  }, [audioUrl]);
 
   return {
     isRecording,
